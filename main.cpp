@@ -21,6 +21,11 @@ class Matrix {
         data.resize(rows * columns, static_cast<T>(0));
         }
 
+        Matrix(const std::vector<T>& input_data) 
+        : rows(1), columns(input_data.size()) {    
+        data = input_data; 
+        }
+
         [[nodiscard]] T& operator()(size_t r, size_t c) {
             assert(r < rows && c < columns && "Index out of bounds");
             return data[r * columns + c];
@@ -32,8 +37,14 @@ class Matrix {
 
         [[nodiscard]] size_t get_rows() const { return rows; }
         [[nodiscard]] size_t get_cols() const { return columns; }
+        
+        void map(float (*func)(float)) {
+            for (size_t i = 0; i < data.size(); ++i) {
+                data[i] = func(data[i]);
+            }
+        }
 
-        Matrix operator+=(Matrix& other) {
+        Matrix operator+=(const Matrix& other) {
             assert(rows == other.rows && columns == other.columns && "Matrices do not have the same dimensions.");
             
             for (size_t i=0; i < data.size(); ++i) {
@@ -43,7 +54,7 @@ class Matrix {
             return *this;
         }
 
-        Matrix operator-=(Matrix& other) {
+        Matrix operator-=(const Matrix& other) {
             assert(rows == other.rows && columns == other.columns && "Matrices do not have the same dimensions.");
 
             for (size_t i; i < data.size(); ++i) {
@@ -52,7 +63,7 @@ class Matrix {
             return *this;
         }
 
-        Matrix operator*=(float num) {
+        Matrix operator*=(const float num) {
             for (size_t i; i < data.size(); ++i) {
                 data[i] *= num;
             }
@@ -67,10 +78,19 @@ class Matrix {
                 for (size_t c=0; c < other.columns; ++c) {
                     float total = 0;
                     for (size_t n=0; n < other.columns; ++n) {
-                        total += this(r, n) * other(n, r);
+                        total += (*this)(r, n) * other(n, r);
                     }
                     result(r, c) = total;
                 }
+            }
+            return result;
+        }
+        Matrix multiply(const Matrix& other) const {
+            assert(rows == other.rows && columns == other.columns && "Dimensions must match for element-wise multiplication");
+            
+            Matrix result(rows, columns);
+            for (size_t i = 0; i < data.size(); ++i) {
+                result.data[i] = data[i] * other.data[i];
             }
             return result;
         }
@@ -109,7 +129,74 @@ class Matrix {
         }
 };
 
-void train();
+struct NetworkResults {
+    Matrix<float> hidden_output;
+    Matrix<float> output;
+};
+
+struct TrainMetrics {
+    float error;
+    Matrix<float> prediction;
+};
+
+class NeuralNetwork {
+    private:
+        int input_nodes;
+        int hidden_nodes;
+        int output_nodes;
+        float learning_rate;
+
+        Matrix<float> weights_input_hidden;
+        Matrix<float> weights_hidden_output;
+        Matrix<float> bias_hidden;
+        Matrix<float> bias_output;
+    
+    public:
+        NeuralNetwork(int inputs, int hidden, int outputs, float lr):
+            input_nodes(inputs),
+            hidden_nodes(hidden),
+            output_nodes(outputs),
+            learning_rate(lr),
+            weights_input_hidden(inputs, hidden),
+            weights_hidden_output(hidden, outputs),
+            bias_hidden(1, hidden),
+            bias_output(1, outputs)
+        {
+            weights_input_hidden.populate_random();
+            weights_hidden_output.populate_random();
+            bias_hidden.populate_random();
+            bias_output.populate_random();
+        }
+   
+        static float sigmoid(float x) {
+            return 1.0f / (1.0f + std::exp(-x));
+        }
+        static float dsigmoid(float y) {
+            return y * (1.0f - y);
+        }
+
+        NetworkResults predict(const std::vector<float>& input_array) {
+            Matrix<float> input(input_array);
+
+            Matrix<float> hidden = input.dot(weights_input_hidden);
+            hidden += bias_hidden;
+            hidden.map(sigmoid);
+
+            Matrix<float> output = hidden.dot(weights_hidden_output);
+            output += bias_output;
+            output.map(sigmoid);
+
+            return { hidden, output };
+        }
+
+        TrainMetrics train_step(const std::vector<float>& input_array, const std::vector<float>& target_array) {
+            Matrix<float> input(input_array);
+            NetworkResults prediction_results = predict(input_array);   
+
+        }
+
+         
+};
 
 int main() {
 
@@ -121,9 +208,7 @@ int main() {
     output.populate_random();
     output.print();
 
-    Matrix<float> result(2, 3);
-    output += input;
-    output.print();
-
+    input.dot(output);
+    input.print();
     return 0;
-}
+};
