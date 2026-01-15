@@ -192,23 +192,15 @@ class NeuralNetwork {
         TrainMetrics train_step(const std::vector<float>& input_array, const std::vector<float>& target_array) {
             Matrix<float> input(input_array);
             NetworkResults prediction_results = predict(input_array);   
-
+            return { 0, input };
         }
-
-         
 };
 
 int main() {
-
-    Matrix<float> input(2, 3);
-    input.populate_random();
-    input.print();
-
-    Matrix<float> output(3, 3);
-    output.populate_random();
-    output.print();
-
-    input.dot(output);
-    input.print();
-    return 0;
+    std::vector<float> inputs = {1, 0};
+    NeuralNetwork brain(2, 2, 1, 0.1);
+    NetworkResults results = brain.predict(inputs);
+    std::cout << "Network Results: " << std::endl;
+    results.output.print();
+    return 0; 
 };
