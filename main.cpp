@@ -57,14 +57,14 @@ class Matrix {
         Matrix operator-=(const Matrix& other) {
             assert(rows == other.rows && columns == other.columns && "Matrices do not have the same dimensions.");
 
-            for (size_t i; i < data.size(); ++i) {
+            for (size_t i=0; i < data.size(); ++i) {
                 data[i] -= other.data[i];
             }
             return *this;
         }
 
         Matrix operator*=(const float num) {
-            for (size_t i; i < data.size(); ++i) {
+            for (size_t i=0; i < data.size(); ++i) {
                 data[i] *= num;
             }
             return *this;
@@ -77,8 +77,8 @@ class Matrix {
             for (size_t r=0; r < rows; ++r) {
                 for (size_t c=0; c < other.columns; ++c) {
                     float total = 0;
-                    for (size_t n=0; n < other.columns; ++n) {
-                        total += (*this)(r, n) * other(n, r);
+                    for (size_t n=0; n < columns; ++n) {
+                        total += (*this)(r, n) * other(n, c);
                     }
                     result(r, c) = total;
                 }
@@ -135,7 +135,7 @@ struct NetworkResults {
 };
 
 struct TrainMetrics {
-    float error;
+    Matrix<float> error;
     Matrix<float> prediction;
 };
 
@@ -190,17 +190,59 @@ class NeuralNetwork {
         }
 
         TrainMetrics train_step(const std::vector<float>& input_array, const std::vector<float>& target_array) {
-            Matrix<float> input(input_array);
-            NetworkResults prediction_results = predict(input_array);   
-            return { 0, input };
+              
+            Matrix<float> inputs(input_array);
+            Matrix<float> target(target_array);
+
+            NetworkResults prediction_results = predict(input_array);
+            Matrix<float> hidden_output = prediction_results.hidden_output;
+            Matrix<float> prediction = prediction_results.output;
+            
+            Matrix<float> error = target;
+            error -= prediction;
+            Matrix<float> gradient = prediction;
+            gradient.map(dsigmoid);
+            gradient = gradient.multiply(error);
+            
+            Matrix<float> tw_hidden_output = weights_hidden_output.transpose();
+            Matrix<float> hidden_error = gradient;
+            hidden_error = hidden_error.dot(tw_hidden_output);
+
+            Matrix<float> hidden_gradient = hidden_output;
+            hidden_output.map(dsigmoid);
+            hidden_gradient = hidden_output.multiply(hidden_error);
+
+            // calculate deltas
+            Matrix<float> delta_ih = inputs.transpose();
+            delta_ih = delta_ih.dot(hidden_gradient);
+            delta_ih *= learning_rate;
+
+            Matrix<float> delta_ho = hidden_output.transpose();
+            delta_ho.print();
+            delta_ho = delta_ho.dot(gradient);
+            delta_ho.print();
+            delta_ho *= learning_rate;
+
+            // update weights and biases
+
+
+            return { error, prediction};
         }
 };
 
+struct data {
+    Matrix<float> inputs;
+    float output;
+};
 int main() {
+
     std::vector<float> inputs = {1, 0};
+   // std::cin >> inputs[0];
+   // std::cin >> inputs[1];
+
     NeuralNetwork brain(2, 2, 1, 0.1);
-    NetworkResults results = brain.predict(inputs);
-    std::cout << "Network Results: " << std::endl;
-    results.output.print();
+    brain.train_step(inputs, {1});
+    
+    
     return 0; 
 };
