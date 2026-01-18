@@ -209,24 +209,26 @@ class NeuralNetwork {
             hidden_error = hidden_error.dot(tw_hidden_output);
 
             Matrix<float> hidden_gradient = hidden_output;
-            hidden_output.map(dsigmoid);
-            hidden_gradient = hidden_output.multiply(hidden_error);
+            hidden_gradient.map(dsigmoid);
+            hidden_gradient = hidden_gradient.multiply(hidden_error);
 
-            // calculate deltas
             Matrix<float> delta_ih = inputs.transpose();
             delta_ih = delta_ih.dot(hidden_gradient);
-            delta_ih *= learning_rate;
 
             Matrix<float> delta_ho = hidden_output.transpose();
-            delta_ho.print();
             delta_ho = delta_ho.dot(gradient);
-            delta_ho.print();
+            
+            delta_ih *= learning_rate;
+            weights_input_hidden += delta_ih;
             delta_ho *= learning_rate;
-
-            // update weights and biases
-
-
-            return { error, prediction};
+            weights_hidden_output += delta_ho;
+            
+            gradient *= learning_rate;
+            bias_output += gradient;
+            hidden_gradient *= learning_rate;
+            bias_hidden += hidden_gradient;
+            
+            return { error, prediction };
         }
 };
 
@@ -242,7 +244,6 @@ int main() {
 
     NeuralNetwork brain(2, 2, 1, 0.1);
     brain.train_step(inputs, {1});
-    
     
     return 0; 
 };
